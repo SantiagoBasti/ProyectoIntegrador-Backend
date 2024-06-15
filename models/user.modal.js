@@ -4,7 +4,7 @@ const Schema = mongoose.Schema
 const userSchema = new Schema({
     fullname: {type:String, require: true, minlength: 3, maxlength: 50},
 
-    email: {type:String, require: true, unique: true, minlength: 3, maxlength: 80, trim: true, validate:{ validator: (value)=>{
+    email: {type:String, require: true, unique: true, minlength: 3, maxlength: 80, trim: true, lowercase:true, validate:{ validator: (value)=>{
         const regex = /^[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
         return regex.test(value)
     }

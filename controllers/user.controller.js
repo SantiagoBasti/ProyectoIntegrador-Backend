@@ -1,6 +1,8 @@
 const User = require('../models/user.modal');
 const bcrypt = require("bcrypt");
-const saltRounds = 10; 
+const saltRounds = 10;
+const jwt = require("jsonwebtoken") 
+const secret = process.env.SECRET
 
 async function getUserById(req, res) {
     try {
@@ -119,6 +121,14 @@ async function deleteUser(req, res) {
 async function updateUser(req, res) {
 
     try {
+        const id = req.params.idUpdate
+
+        if(req.user.role !== 'ADMIN_ROLE' && req.user._id !== id){
+            return res.status(400).send({
+                ok: false,
+                message:"No puede editar este usuario"
+            })
+        }
 
         const newData = req.body;
 
@@ -128,8 +138,6 @@ async function updateUser(req, res) {
         }
 
         // TODO: Resetear Role
-
-        const id = req.params.idUpdate;
 
         console.log(id)
 
@@ -157,6 +165,65 @@ async function updateUser(req, res) {
 
 }
 
+async function login(req, res){
+    try{
+        // Obtener email y password que me envie el usuario en el body
+    const email = req.body.email;
+    const password = req.body.password;
+
+    if(!email || !password){
+        return res.status(400).send({
+            ok: false,
+            message:"Email y Password son requeridos"
+        })
+    }
+
+    console.log(email, password)
+    // Chequear si el usuario existe, de ser asi lo obtenerlo
+    const user = await User.findOne({email: {$regex: email, $options: "i"} })
+
+    console.log(user)
+    // Si el usuario no existe debuelvo un 404
+    if(!user){
+        return res.status(404).send({
+            ok:false,
+            message:"Datos incorrectos"
+        })
+    }
+    // Comparar el pasword con el que tengo guardado con el de la base de datos ( el password de la DB esta hasheado entonces usamos bcrypt para comparar)
+    const match = await bcrypt.compare(password, user.password)
+
+    // Si los datos no coinciden devolvemos error
+    if(!match){
+        return res.status(400).send({
+            ok:false,
+            message:"Datos incorrectos"
+        })
+    }
+
+    user.password = undefined
+
+    const token = jwt.sign(user.toJSON(), secret, {expiresIn: "2m" })
+
+    // Generamos un toke de login
+
+    // Si todo ok hacemos devolvemos una respuesta favorabl
+    res.status(200).send({
+        ok:true,
+        message:"Login Correcto",
+        user,
+        token
+    })
+
+    }catch(error){
+        console.log(error)
+        res.status(500).send({
+            ok: false,
+            message:"Error al hacer login"
+        })
+    }
+}
+
 
 
 
@@ -165,5 +232,6 @@ module.exports = {
     postUser,
     deleteUser,
     updateUser,
-    getUserById
+    getUserById,
+    login
 }
