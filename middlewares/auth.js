@@ -4,6 +4,8 @@ const SECRET = process.env.SECRET;
 
 function jwtVerifly(req, res, next){
 
+    
+    // const token = req.headers.authorization.split(" ")[1];
     const token = req.headers.authorization;
 
     // Checkeamos si nos enviaron un token, de no ser asi retornamos un 401

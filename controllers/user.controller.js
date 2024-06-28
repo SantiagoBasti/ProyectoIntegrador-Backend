@@ -35,13 +35,39 @@ async function getUserById(req, res) {
 async function getUsers(req, res) {
 
     try {
+        console.log(req.query)
+        const limiteUsuarios = req.query.limit || 2 ;
+        const page = req.query.page || 0 ;
+
+        const[users, total] = await Promise.all([
+            User.find()
+                                .select({ password: 0 })
+                                .collation({ locale: "es" })
+                                .sort({fullname: 1, })
+                                .limit(limiteUsuarios)
+                                .skip(page * limiteUsuarios), // Petición 1
+            
+            User.countDocuments() // Petición 2
+        ])
         
-        const users = await User.find().select({ password: 0 });
+        // const users = await User.find()
+        //                         .select({ password: 0 })
+        //                         .collation({
+        //                             locale: "es"
+        //                         })
+        //                         .sort({
+        //                             fullname: 1, // "1"o "-1" | "asc" o "desc"
+        //                         })
+        //                         .limit(limiteUsuarios)
+        //                         .skip(page * limiteUsuarios)// 1 * 100 = 100
+
+        // const total = await User.countDocuments();
 
         res.status(200).send({
             ok: true,
             message: "Usuarios obtenidos correctamente",
-            users
+            users,
+            total
         })
 
     } catch (error) {
@@ -84,7 +110,7 @@ async function postUser(req, res) {
 async function deleteUser(req, res) {
 
     try {
-        
+                
         console.log(req.params)
         // Obtenemos de los params name definidos en la ruta el id
         const id = req.params.id;
@@ -203,7 +229,7 @@ async function login(req, res){
 
     user.password = undefined
 
-    const token = jwt.sign(user.toJSON(), secret, {expiresIn: "2m" })
+    const token = jwt.sign(user.toJSON(), secret, {expiresIn: "1h" })
 
     // Generamos un toke de login
 
