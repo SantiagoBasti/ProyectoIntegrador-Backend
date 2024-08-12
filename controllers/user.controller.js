@@ -2,6 +2,7 @@ const User = require('../models/user.modal');
 const bcrypt = require("bcrypt");
 const saltRounds = 10;
 const jwt = require("jsonwebtoken") 
+
 const secret = process.env.SECRET
 
 async function getUserById(req, res) {
@@ -36,7 +37,7 @@ async function getUsers(req, res) {
 
     try {
         console.log(req.query)
-        const limiteUsuarios = req.query.limit || 2 ;
+        const limiteUsuarios = req.query.limit || 5 ;
         const page = req.query.page || 0 ;
 
         const[users, total] = await Promise.all([
@@ -45,24 +46,11 @@ async function getUsers(req, res) {
                                 .collation({ locale: "es" })
                                 .sort({fullname: 1, })
                                 .limit(limiteUsuarios)
-                                .skip(page * limiteUsuarios), // Petición 1
+                                .skip(page * limiteUsuarios), 
             
-            User.countDocuments() // Petición 2
+            User.countDocuments() 
         ])
         
-        // const users = await User.find()
-        //                         .select({ password: 0 })
-        //                         .collation({
-        //                             locale: "es"
-        //                         })
-        //                         .sort({
-        //                             fullname: 1, // "1"o "-1" | "asc" o "desc"
-        //                         })
-        //                         .limit(limiteUsuarios)
-        //                         .skip(page * limiteUsuarios)// 1 * 100 = 100
-
-        // const total = await User.countDocuments();
-
         res.status(200).send({
             ok: true,
             message: "Usuarios obtenidos correctamente",
@@ -72,7 +60,7 @@ async function getUsers(req, res) {
 
     } catch (error) {
         console.log(error)
-        // Devolvemos una respuesta con codigo 500 Internal Error
+       
         res.status(500).send({
             ok: false,
             message: "Error al obtener usuarios"
@@ -82,29 +70,26 @@ async function getUsers(req, res) {
 }
 
 async function postUser(req, res) {
-
     try {
-        // Si me mandan el dato role y el usuario no es admin, entonces se lo asigno como cliente
-        if (req.user?.role !== "ADMIN_ROLE") {
-            req.body.role = "CLIENT_ROLE";
+        if (req.user?.role !== 'ADMIN_ROLE') {
+            req.body.role = 'CLIENT_ROLE';
         }
 
-        // Encriptar la contraseña antes de guardarla en la base de datos
-        req.body.password = await bcrypt.hash(req.body.password, saltRounds)
+        req.body.password = await bcrypt.hash(req.body.password, saltRounds);
+
+        if (req.files && req.files.user) {
+            req.body.image = req.files.user[0].filename;
+        }
 
         const user = new User(req.body);
-
         const newUser = await user.save();
-        // Borrar la propiedad password antes de responder a quien realizo la peticion con los datos del nuevo usuario
         newUser.password = undefined;
 
         res.status(201).send(newUser);
-
     } catch (error) {
-        res.status(500).send("Error al crear el usuario")
-        console.log(error)
+        res.status(500).send('Error al crear el usuario');
+        console.log(error);
     }
-
 }
 
 async function deleteUser(req, res) {
@@ -112,7 +97,7 @@ async function deleteUser(req, res) {
     try {
                 
         console.log(req.params)
-        // Obtenemos de los params name definidos en la ruta el id
+        
         const id = req.params.id;
 
         const deletedUser = await User.findByIdAndDelete(id)
@@ -145,55 +130,54 @@ async function deleteUser(req, res) {
 }
 
 async function updateUser(req, res) {
-
     try {
-        const id = req.params.idUpdate
+        const id = req.params.idUpdate;
 
-        if(req.user.role !== 'ADMIN_ROLE' && req.user._id !== id){
+        if (req.user.role !== 'ADMIN_ROLE' && req.user._id !== id) {
             return res.status(400).send({
                 ok: false,
-                message:"No puede editar este usuario"
-            })
+                message: "No puede editar este usuario"
+            });
         }
 
         const newData = req.body;
 
-        // TODO: Hashear password en el update
-        if(req.body.password) {
-            
+        if (req.files && req.files.user) {
+            newData.image = req.files.user[0].filename;
         }
 
-        // TODO: Resetear Role
+        newData.password = undefined;
 
-        console.log(id)
+        if (req.user.role !== 'ADMIN_ROLE') {
+            newData.role = undefined;
+        }
 
-        const updUser = await User.findByIdAndUpdate(id, newData, { new: true })
+        const updUser = await User.findByIdAndUpdate(id, newData, { new: true });
 
-        if(!updUser) {
+        if (!updUser) {
             return res.status(404).send({
                 ok: false,
                 message: "No se encontró el usuario"
-            })
+            });
         }
 
         res.status(200).send({
             ok: true,
             message: "Usuario actualizado correctamente"
-        })
+        });
 
     } catch (error) {
-        console.log(error)
+        console.log(error);
         res.status(500).send({
             ok: false,
             message: "No se pudo editar usuario"
-        })
+        });
     }
-
 }
 
 async function login(req, res){
     try{
-        // Obtener email y password que me envie el usuario en el body
+
     const email = req.body.email;
     const password = req.body.password;
 
@@ -205,21 +189,20 @@ async function login(req, res){
     }
 
     console.log(email, password)
-    // Chequear si el usuario existe, de ser asi lo obtenerlo
+    
     const user = await User.findOne({email: {$regex: email, $options: "i"} })
 
     console.log(user)
-    // Si el usuario no existe debuelvo un 404
+
     if(!user){
         return res.status(404).send({
             ok:false,
             message:"Datos incorrectos"
         })
     }
-    // Comparar el pasword con el que tengo guardado con el de la base de datos ( el password de la DB esta hasheado entonces usamos bcrypt para comparar)
+
     const match = await bcrypt.compare(password, user.password)
 
-    // Si los datos no coinciden devolvemos error
     if(!match){
         return res.status(400).send({
             ok:false,
@@ -231,9 +214,7 @@ async function login(req, res){
 
     const token = jwt.sign(user.toJSON(), secret, {expiresIn: "1h" })
 
-    // Generamos un toke de login
 
-    // Si todo ok hacemos devolvemos una respuesta favorabl
     res.status(200).send({
         ok:true,
         message:"Login Correcto",

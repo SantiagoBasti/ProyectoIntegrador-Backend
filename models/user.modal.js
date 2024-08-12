@@ -10,7 +10,9 @@ const userSchema = new Schema({
     }
     }},
 
-    password: {type:String, require: true, minlength: 5, maxlength: 80, trim: true,  },
+    password: {type:String, require: true, minlength: 4, maxlength: 80, trim: true,  },
+
+    image:{ type:String, trim: true, },
 
     bornDate: {type:Date, require: true},
 

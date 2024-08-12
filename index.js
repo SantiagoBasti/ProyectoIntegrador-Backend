@@ -1,4 +1,4 @@
-require("dotenv").config();   //Activar simpre de primero para leer variables de entorno
+require("dotenv").config(); 
 
 const mongoose = require("mongoose");
 
